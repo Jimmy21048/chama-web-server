@@ -1,6 +1,14 @@
 const express = require('express')
-const mysql = require('mysql')
+const cors = require('cors')
 
 const app = express()
+app.use(cors())
+app.use(express.json());
 
-app.listen()
+
+
+app.listen(3000, (err) => {
+    if(err) return console.log(err);
+
+    console.log("Server up and running")
+})
