@@ -22,9 +22,12 @@ app.get('/getUsers', (req, res) => {
     const query = "SELECT * FROM chama";
 
     connection.query(query, (err, result) => {
-        if(err) return console.log(err);
+        if(err) {
+            console.log(err)
+            return res.json({fail: "Failed"})
+        }
 
-        console.log(result)
+        return res.json({success: result})
     })
 })
 app.post('/getUser', (req, res) => {
