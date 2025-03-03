@@ -27,6 +27,34 @@ app.get('/getUsers', (req, res) => {
         console.log(result)
     })
 })
+app.post('/getUser', (req, res) => {
+    const query = "SELECT * FROM chama WHERE username = ? AND verified = ?";
+    const values = [req.body.username, 0]
+
+    connection.query(query, values, (err, result) => {
+        if(err) return console.log(err);
+
+        if(result.length > 0) {
+            return res.json({success: result})
+        } else {
+            return res.json({fail: []})
+        }
+        
+    })
+})
+app.post('/verifyUser', (req, res) => {
+    const query = "UPDATE chama SET pwd = ?, verified = ? WHERE username = ?";
+    const values = [req.body.password, 1, req.body.username]
+
+    connection.query(query, values, (err) => {
+        if(err) {
+            console.log(err)
+            return res.json({fail: true})
+        }
+
+        return res.json({added: true})
+    })
+})
 app.post('/userExists', (req, res) => {
     const query = "SELECT username FROM chama WHERE username = ?";
     const values = [req.body.username]
