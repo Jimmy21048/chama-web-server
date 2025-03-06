@@ -69,6 +69,20 @@ app.post('/userExists', (req, res) => {
         return res.json({exists: false})
     })
 })
+app.post('/updateAmount', (req, res) => {
+    const data = req.body
+    const query = "UPDATE chama SET weekly = ?, total = total + weekly, metaData = ? WHERE username = ?";
+    const values = [data.amount, data.metaData, data.username]
+
+    connection.query(query, values, (err) => {
+        if(err) {
+            console.log(err)
+            return res.json({fail: "Could not complete operation"})
+        }
+
+        return res.json({success: "Amount Updated"});
+    })
+})
 
 connection.connect((err) => {
     if(err) return console.log(err);
