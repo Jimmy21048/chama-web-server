@@ -7,6 +7,7 @@ const app = express()
 app.use(cors())
 app.use(express.json());
 
+
 app.post('/addUser', (req, res) => {
     const query = "INSERT INTO chama (username) VALUES (?)";
     const values = [req.body.username]
@@ -19,6 +20,7 @@ app.post('/addUser', (req, res) => {
 })
 
 app.get('/getUsers', (req, res) => {
+
     const query = "SELECT * FROM chama";
 
     connection.query(query, (err, result) => {
