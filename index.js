@@ -86,6 +86,10 @@ app.post('/updateAmount', (req, res) => {
     })
 })
 
+app.post('/updateRounds', (req, res) => {
+    
+})
+
 connection.connect((err) => {
     if(err) return console.log(err);
     app.listen(3000, (err) => {
