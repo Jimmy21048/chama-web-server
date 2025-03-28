@@ -90,19 +90,40 @@ app.post('/updateRounds', async (req, res) => {
     const data = req.body.users
     const query = "UPDATE chama SET round = ? WHERE username = ?";
 
-    for(let i = 0; i < data.length; i++) {
-        const values = [data[i].round, data[i].username]
+    connection.beginTransaction((err => {
+        if(err) {
+            return console.log("Bulk transaction failed "+ err)
+        }
 
-        connection.query(query, values, (err) => {
-            if(err) {
-                console.log(err)
-                return res.json({fail: "Could not update all rounds"})
-            }
-            
+        const promises = data.map(item => {
+            return new Promise((resolve, reject) => {
+                connection.query(query, [item.round, item.username], (err1) => {
+                    if(err1) {
+                        reject(err1)
+                    } else {
+                        resolve()
+                    }
+                })
+            })
         })
-    }
 
-    return res.json({success: "Rounds Updated"})
+        Promise.all(promises)
+        .then(() => {
+            connection.commit((err2) => {
+                if(err2) {
+                    console.error("Commit failed "+ err2)
+                    connection.rollback(() => console.log("Transaction rolled back"))
+                    return res.json({fail: "Rounds not Updated"})
+                } else {
+                    return res.json({success: "Rounds Updated"})
+                }
+            })
+        }).catch((err3) => {
+            console.error("Commit failed "+ err3)
+            connection.rollback(() => console.log("Transaction rolled back"))
+            return res.json({fail: "Rounds not Updated"})
+        })
+    }))
 })
 
 connection.connect((err) => {
