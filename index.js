@@ -86,8 +86,23 @@ app.post('/updateAmount', (req, res) => {
     })
 })
 
-app.post('/updateRounds', (req, res) => {
-    
+app.post('/updateRounds', async (req, res) => {
+    const data = req.body.users
+    const query = "UPDATE chama SET round = ? WHERE username = ?";
+
+    for(let i = 0; i < data.length; i++) {
+        const values = [data[i].round, data[i].username]
+
+        connection.query(query, values, (err) => {
+            if(err) {
+                console.log(err)
+                return res.json({fail: "Could not update all rounds"})
+            }
+            
+        })
+    }
+
+    return res.json({success: "Rounds Updated"})
 })
 
 connection.connect((err) => {
