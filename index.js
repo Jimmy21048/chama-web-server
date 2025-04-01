@@ -125,6 +125,16 @@ app.post('/updateRounds', async (req, res) => {
         })
     }))
 })
+app.get('/getRoundDetails', (req, res) => {
+    const query = "SELECT round_days, start_date FROM admin"
+
+    connection.query(query, (err, result) => {
+        if(err) {
+            return console.log(err)
+        }
+        console.log(result)
+    })
+})
 
 connection.connect((err) => {
     if(err) return console.log(err);
