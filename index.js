@@ -73,16 +73,71 @@ app.post('/userExists', (req, res) => {
 })
 app.post('/updateAmount', (req, res) => {
     const data = req.body
-    const query = "UPDATE chama SET weekly = ?, total = total + weekly, metaData = ? WHERE username = ?";
-    const values = [data.amount, data.metaData, data.username]
 
-    connection.query(query, values, (err) => {
+    //get user details first
+    const query = "SELECT once, weekly, week, monthly, month, extra, total, round FROM chama WHERE username = ?"
+    const values = [data.username]
+
+    connection.query(query, values, (err, result) => {
         if(err) {
             console.log(err)
             return res.json({fail: "Could not complete operation"})
         }
+       const userDetails = result[0] 
 
-        return res.json({success: "Amount Updated"});
+       //check for the week and month number
+       const week = userDetails.week
+       const month = userDetails.month
+       const weekly = userDetails.weekly
+       const thisWeek = Math.ceil(data.todayNumber / 7)
+       const thisRound = Math.ceil(data.todayNumber / data.roundDays)
+       const tableWeek = thisWeek - week
+       const tableRound = thisRound - month
+
+       const query1 = "UPDATE chama SET weekly = weekly + ?, week = ?, monthly = monthly + ?, month = ?, extra = extra + ?, total = total + ?, metaData = ? WHERE username = ?"
+       const values1 = [
+            Number(data.amount),
+            thisWeek,
+            Number(data.amount),
+            thisRound,
+            Number(data.amount),
+            Number(data.amount),
+            data.metaData,
+            data.username
+       ]
+
+       connection.query(query1, values1, (err1) => {
+            if(err1) {
+                console.log(err1)
+                return res.json({fail: "Could not complete operation"})
+            }
+            return res.json({success: 'updated'})
+       })
+
+    })
+})
+
+app.post('/updateUsers', (req, res) => {
+    const data = req.body.notUpdated
+    console.log(data)
+    const weekQuery = "UPDATE chama SET weekly = ?, week = ?, extra = extra - ? WHERE username = ?"
+    const monthQuery = "UPDATE chama SET monthly = ?, month = ? WHERE username = ?"
+    
+    connection.beginTransaction((err) => {
+        if(err) {
+            console.log("Transaction error")
+            return res.json({fail: 'Could not complete operation'})
+        }
+
+        const promises = data.map(item => {
+            return new Promise((resolve, reject) => {
+                if(item.monthDiff > 0) {
+                    connection.query(monthQuery, [0, item.thisRound], (err) => {
+                        //finish this section
+                    })
+                }
+            })
+        })
     })
 })
 
@@ -138,7 +193,6 @@ app.get('/getRoundDetails', (req, res) => {
 })
 app.post('/changeRoundDetails', (req, res) => {
     const data = req.body.rounds
-    // console.log()
     const days = Number(data.days)
     const query = "UPDATE admin SET round_days = ?, start_date = ? WHERE username = ?";
     const values = [days, data.date, 'admin']
