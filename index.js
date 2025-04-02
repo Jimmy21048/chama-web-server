@@ -130,9 +130,25 @@ app.get('/getRoundDetails', (req, res) => {
 
     connection.query(query, (err, result) => {
         if(err) {
-            return console.log(err)
+            console.log(err)
+            return res.json({fail: "Failed"})
         }
-        console.log(result)
+        return res.json({success: result})
+    })
+})
+app.post('/changeRoundDetails', (req, res) => {
+    const data = req.body.rounds
+    // console.log()
+    const days = Number(data.days)
+    const query = "UPDATE admin SET round_days = ?, start_date = ? WHERE username = ?";
+    const values = [days, data.date, 'admin']
+
+    connection.query(query, values, (err) => {
+        if(err) {
+            console.log(err)
+            return res.json({fail: 'failed'})
+        }
+        return res.json({success: 'records updated'})
     })
 })
 
