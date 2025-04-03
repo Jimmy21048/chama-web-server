@@ -9,8 +9,13 @@ app.use(express.json());
 
 
 app.post('/addUser', (req, res) => {
-    const query = "INSERT INTO chama (username) VALUES (?)";
-    const values = [req.body.username]
+    const data = req.body
+
+    const thisWeek = Math.ceil(data.todayNumber / 7)
+    const thisRound = Math.ceil(data.todayNumber / 30)
+
+    const query = "INSERT INTO chama (username, week, month, extra) VALUES (?, ?, ?, ?)";
+    const values = [req.body.username, thisWeek, thisRound, thisWeek * -150]
 
     connection.query(query, values, (err) => {
         if(err) return console.log(err);
@@ -20,29 +25,32 @@ app.post('/addUser', (req, res) => {
 })
 
 app.get('/getUsers', (req, res) => {
-
     const query = "SELECT * FROM chama";
 
     connection.query(query, (err, result) => {
         if(err) {
             console.log(err)
-            return res.json({fail: "Failed"})
+            return res.json({fail: "AN ERROR OCCURRED"})
         }
 
         return res.json({success: result})
     })
 })
-app.post('/getUser', (req, res) => {
+app.get('/getUser/:username', (req, res) => {
+    const { username } = req.params
     const query = "SELECT * FROM chama WHERE username = ? AND verified = ?";
-    const values = [req.body.username, 0]
-
+    const values = [username, 0]
+ 
     connection.query(query, values, (err, result) => {
-        if(err) return console.log(err);
+        if(err) {
+            console.log(err)
+            return res.json({fail: "SORRY, AN ERROR OCCURRED"})
+        } 
 
         if(result.length > 0) {
             return res.json({success: result})
         } else {
-            return res.json({fail: []})
+            return res.json({fail: "INVALID CREDENTIALS"})
         }
         
     })
@@ -54,10 +62,10 @@ app.post('/verifyUser', (req, res) => {
     connection.query(query, values, (err) => {
         if(err) {
             console.log(err)
-            return res.json({fail: true})
+            return res.json({fail: "SORRY, AN ERROR OCCURRED"})
         }
 
-        return res.json({added: true})
+        return res.json({success: true})
     })
 })
 app.post('/userExists', (req, res) => {
@@ -73,7 +81,6 @@ app.post('/userExists', (req, res) => {
 })
 app.post('/updateAmount', (req, res) => {
     const data = req.body
-
     //get user details first
     const query = "SELECT once, weekly, week, monthly, month, extra, total, round FROM chama WHERE username = ?"
     const values = [data.username]
@@ -119,10 +126,9 @@ app.post('/updateAmount', (req, res) => {
 
 app.post('/updateUsers', (req, res) => {
     const data = req.body.notUpdated
-    console.log(data)
     const weekQuery = "UPDATE chama SET weekly = ?, week = ?, extra = extra - ? WHERE username = ?"
-    const monthQuery = "UPDATE chama SET monthly = ?, month = ? WHERE username = ?"
-    
+    const monthQuery = "UPDATE chama SET weekly = ?, week = ?, extra = extra - ?, monthly = ?, month = ? WHERE username = ?"
+
     connection.beginTransaction((err) => {
         if(err) {
             console.log("Transaction error")
@@ -131,12 +137,41 @@ app.post('/updateUsers', (req, res) => {
 
         const promises = data.map(item => {
             return new Promise((resolve, reject) => {
-                if(item.monthDiff > 0) {
-                    connection.query(monthQuery, [0, item.thisRound], (err) => {
-                        //finish this section
+                if(item.monthDiff > 0) { 
+                    connection.query(monthQuery, [0, item.thisWeek, (item.weekDiff * 150), 0, item.thisRound, item.username], (err1) => {
+                        if(err1) {
+                            reject(err1)
+                        } else {
+                            resolve()
+                        }
+                    })
+                } else {
+                    connection.query(weekQuery, [0, item.thisWeek, (item.weekDiff * 150), item.username], (err1) => {
+                        if(err1) {
+                            reject(err1)
+                        } else {
+                            resolve()
+                        }
                     })
                 }
             })
+        })
+
+        Promise.all(promises)
+        .then(() => {
+            connection.commit((err1) => {
+                if(err1) {
+                    console.log("Transaction commit failed ", err1)
+                    connection.rollback(() => console.log("Transaction rolled back"))
+                    return res.json({fail: "Something went wrong"})
+                } else {
+                    return res.json({success: "success"})
+                }
+            })
+        }).catch((err1) => {
+            console.log("Transaction failed ", err1)
+            connection.rollback(() => console.log("Transaction rolled back"))
+            return res.json({fail: "Something went wrong"})
         })
     })
 })
