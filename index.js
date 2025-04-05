@@ -10,13 +10,13 @@ app.use(express.json());
 
 app.post('/addUser', (req, res) => {
     const data = req.body
-
-    const thisWeek = Math.ceil(data.todayNumber / 7)
-    const thisRound = Math.ceil(data.todayNumber / 30)
-
-    const query = "INSERT INTO chama (username, week, month, extra) VALUES (?, ?, ?, ?)";
-    const values = [req.body.username, thisWeek, thisRound, thisWeek * -150]
-
+    
+    // const thisWeek = Math.ceil(data.todayNumber / 7)
+    const thisRound = Math.ceil(data.todayNumber / data.days)
+    const amount = (-(thisRound * data.amount))
+    const query = "INSERT INTO chama (username, month, extra, round) VALUES (?, ?, ?, ?)";
+    const values = [req.body.username, thisRound, amount, data.userNumber + 1]
+ 
     connection.query(query, values, (err) => {
         if(err) return console.log(err);
 
@@ -82,7 +82,7 @@ app.post('/userExists', (req, res) => {
 app.post('/updateAmount', (req, res) => {
     const data = req.body
     //get user details first
-    const query = "SELECT once, weekly, week, monthly, month, extra, total, round FROM chama WHERE username = ?"
+    const query = "SELECT weekly, monthly, month, extra, total, round FROM chama WHERE username = ?"
     const values = [data.username]
 
     connection.query(query, values, (err, result) => {
@@ -93,18 +93,14 @@ app.post('/updateAmount', (req, res) => {
        const userDetails = result[0] 
 
        //check for the week and month number
-       const week = userDetails.week
        const month = userDetails.month
        const weekly = userDetails.weekly
-       const thisWeek = Math.ceil(data.todayNumber / 7)
        const thisRound = Math.ceil(data.todayNumber / data.roundDays)
-       const tableWeek = thisWeek - week
        const tableRound = thisRound - month
 
-       const query1 = "UPDATE chama SET weekly = weekly + ?, week = ?, monthly = monthly + ?, month = ?, extra = extra + ?, total = total + ?, metaData = ? WHERE username = ?"
+       const query1 = "UPDATE chama SET weekly = weekly + ?, monthly = monthly + ?, month = ?, extra = extra + ?, total = total + ?, metaData = ? WHERE username = ?"
        const values1 = [
             Number(data.amount),
-            thisWeek,
             Number(data.amount),
             thisRound,
             Number(data.amount),
@@ -125,35 +121,25 @@ app.post('/updateAmount', (req, res) => {
 })
 
 app.post('/updateUsers', (req, res) => {
-    const data = req.body.notUpdated
-    const weekQuery = "UPDATE chama SET weekly = ?, week = ?, extra = extra - ? WHERE username = ?"
-    const monthQuery = "UPDATE chama SET weekly = ?, week = ?, extra = extra - ?, monthly = ?, month = ? WHERE username = ?"
+    const data = req.body
+    const monthQuery = "UPDATE chama SET weekly = ?, extra = extra - ?, monthly = ?, month = ? WHERE username = ?"
 
+    console.log(data)
     connection.beginTransaction((err) => {
         if(err) {
             console.log("Transaction error")
             return res.json({fail: 'Could not complete operation'})
         }
 
-        const promises = data.map(item => {
+        const promises = data.notUpdated.map(item => {
             return new Promise((resolve, reject) => {
-                if(item.monthDiff > 0) { 
-                    connection.query(monthQuery, [0, item.thisWeek, (item.weekDiff * 150), 0, item.thisRound, item.username], (err1) => {
+                    connection.query(monthQuery, [0, (item.monthDiff * data.amount), 0, item.thisRound, item.username], (err1) => {
                         if(err1) {
                             reject(err1)
                         } else {
                             resolve()
                         }
                     })
-                } else {
-                    connection.query(weekQuery, [0, item.thisWeek, (item.weekDiff * 150), item.username], (err1) => {
-                        if(err1) {
-                            reject(err1)
-                        } else {
-                            resolve()
-                        }
-                    })
-                }
             })
         })
 
@@ -216,21 +202,23 @@ app.post('/updateRounds', async (req, res) => {
     }))
 })
 app.get('/getRoundDetails', (req, res) => {
-    const query = "SELECT round_days, start_date FROM admin"
+    const query = "SELECT round_days, start_date, round_amount FROM admin"
 
     connection.query(query, (err, result) => {
         if(err) {
             console.log(err)
-            return res.json({fail: "Failed"})
+            return res.json({fail: "ERROR! COULD NOT COMPLETE OPERATION"})
         }
         return res.json({success: result})
     })
 })
 app.post('/changeRoundDetails', (req, res) => {
     const data = req.body.rounds
+    console.log(data)
     const days = Number(data.days)
-    const query = "UPDATE admin SET round_days = ?, start_date = ? WHERE username = ?";
-    const values = [days, data.date, 'admin']
+    const amount = Number(data.amount)
+    const query = "UPDATE admin SET round_days = ?, start_date = ?, round_amount = ? WHERE username = ?";
+    const values = [days, data.date, amount, 'admin']
 
     connection.query(query, values, (err) => {
         if(err) {
